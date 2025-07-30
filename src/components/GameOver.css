@@ -1,0 +1,180 @@
+.game-over {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+
+.game-over-content {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 20px;
+  padding: 40px;
+  max-width: 600px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(20px);
+}
+
+.game-over h1 {
+  color: #2c3e50;
+  margin: 0 0 30px 0;
+  font-size: 3rem;
+  font-weight: bold;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.winner-section {
+  margin-bottom: 30px;
+}
+
+.winner-section h2 {
+  color: #f39c12;
+  margin: 0 0 20px 0;
+  font-size: 2rem;
+  font-weight: bold;
+}
+
+.winner-stats {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  margin-top: 20px;
+}
+
+.winner-stats .stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.winner-stats .stat-label {
+  font-size: 0.9rem;
+  color: #7f8c8d;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.winner-stats .stat-value {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+.no-winner {
+  margin-bottom: 30px;
+}
+
+.no-winner h2 {
+  color: #e74c3c;
+  margin: 0 0 10px 0;
+  font-size: 2rem;
+}
+
+.no-winner p {
+  color: #7f8c8d;
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.final-standings {
+  margin-bottom: 30px;
+}
+
+.final-standings h3 {
+  color: #2c3e50;
+  margin: 0 0 20px 0;
+  font-size: 1.5rem;
+}
+
+.standings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.standing-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.standing-item.winner {
+  border-color: #f39c12;
+  background: rgba(243, 156, 18, 0.1);
+}
+
+.standing-item .position {
+  font-weight: bold;
+  color: #667eea;
+  font-size: 1.1rem;
+  min-width: 40px;
+}
+
+.standing-item .player-name {
+  font-weight: bold;
+  color: #2c3e50;
+  flex: 1;
+  text-align: left;
+  margin-left: 15px;
+}
+
+.standing-item .player-score {
+  font-weight: bold;
+  color: #27ae60;
+  margin-right: 15px;
+}
+
+.standing-item .player-lines {
+  color: #7f8c8d;
+  font-size: 0.9rem;
+}
+
+.game-over-actions {
+  margin-top: 30px;
+}
+
+@media (max-width: 768px) {
+  .game-over-content {
+    padding: 30px 20px;
+  }
+  
+  .game-over h1 {
+    font-size: 2.5rem;
+  }
+  
+  .winner-section h2 {
+    font-size: 1.5rem;
+  }
+  
+  .winner-stats {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .standing-item {
+    flex-direction: column;
+    gap: 5px;
+    text-align: center;
+  }
+  
+  .standing-item .player-name {
+    text-align: center;
+    margin-left: 0;
+  }
+  
+  .standing-item .player-score {
+    margin-right: 0;
+  }
+} 

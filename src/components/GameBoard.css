@@ -1,0 +1,121 @@
+.game-board-container {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.board-section {
+  flex: 1;
+}
+
+.board-section h3 {
+  color: white;
+  margin-bottom: 10px;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.game-board {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  grid-template-rows: repeat(20, 1fr);
+  width: 300px;
+  height: 600px;
+  border: 3px solid #2c3e50;
+  background: rgba(0, 0, 0, 0.8);
+  position: relative;
+}
+
+.game-board.game-over {
+  opacity: 0.5;
+}
+
+.cell {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.1s ease;
+}
+
+.cell.empty {
+  background: transparent;
+}
+
+.cell.filled {
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.3);
+}
+
+.cell.piece {
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+  z-index: 10;
+}
+
+.next-piece-section {
+  width: 150px;
+}
+
+.next-piece-section h3 {
+  color: white;
+  margin-bottom: 10px;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.next-piece-board {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(4, 1fr);
+  width: 120px;
+  height: 120px;
+  border: 2px solid #2c3e50;
+  background: rgba(0, 0, 0, 0.6);
+  position: relative;
+}
+
+.cell.next-piece {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.3);
+}
+
+.game-over-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+}
+
+.game-over-message {
+  text-align: center;
+  color: white;
+}
+
+.game-over-message h2 {
+  margin: 0 0 10px 0;
+  font-size: 2rem;
+  color: #ff4757;
+}
+
+.game-over-message p {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+@media (max-width: 768px) {
+  .game-board-container {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .game-board {
+    width: 250px;
+    height: 500px;
+  }
+  
+  .next-piece-board {
+    width: 100px;
+    height: 100px;
+  }
+} 
