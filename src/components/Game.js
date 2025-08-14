@@ -1,8 +1,8 @@
 import React, { useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
-import { playerActions } from '../store/playerSlice';
-import { gameActions } from '../store/gameSlice';
+import { setPlayer } from '../store/playerSlice';
+import { resetGame } from '../store/gameSlice';
 import GameBoard from './GameBoard';
 import PlayerList from './PlayerList';
 import GameControls from './GameControls';
@@ -16,12 +16,12 @@ const Game = () => {
   
   const game = useSelector(state => state.game);
   const player = useSelector(state => state.player);
-  const connected = useSelector(state => state.ui.connected);
+  const connected = useSelector(state => state.socket.connected);
 
   // Set up player data when component mounts
   useEffect(() => {
     if (room && playerName && connected) {
-      dispatch(playerActions.setPlayer({
+      dispatch(setPlayer({
         name: playerName,
         roomName: room
       }));
@@ -70,7 +70,7 @@ const Game = () => {
 
   // Handle game restart
   const handleRestartGame = () => {
-    dispatch(gameActions.resetGame());
+    dispatch(resetGame());
     navigate('/');
   };
 

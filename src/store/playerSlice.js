@@ -18,6 +18,7 @@ const playerSlice = createSlice({
     linesCleared: 0,         // Total lines cleared in current game
     level: 1,                // Current game level
     gameOver: false,         // Whether player's game is over
+    isAlive: true,           // Whether player is still alive in the game
   },
 
   // Reducer functions that handle state updates
@@ -99,6 +100,16 @@ const playerSlice = createSlice({
     },
 
     /**
+     * Set player's alive status
+     * Called when player is eliminated or revived
+     * @param {Object} state - Current Redux state
+     * @param {Object} action - Action object with alive status
+     */
+    setIsAlive: (state, action) => {
+      state.isAlive = action.payload;       // Update alive status
+    },
+
+    /**
      * Reset player's game state
      * Called when starting a new game or resetting current game
      * @param {Object} state - Current Redux state
@@ -109,6 +120,7 @@ const playerSlice = createSlice({
       state.linesCleared = 0;               // Reset lines cleared
       state.level = 1;                      // Reset level
       state.gameOver = false;               // Reset game over status
+      state.isAlive = true;                 // Reset alive status
     },
 
     /**
@@ -124,6 +136,7 @@ const playerSlice = createSlice({
       state.linesCleared = 0;               // Reset lines cleared
       state.level = 1;                      // Reset level
       state.gameOver = false;               // Reset game over status
+      state.isAlive = true;                 // Reset alive status
     },
   },
 });
@@ -137,6 +150,7 @@ export const {
   updateLinesCleared,  // Update lines cleared
   updateLevel,         // Update level
   setGameOver,         // Set game over status
+  setIsAlive,          // Set alive status
   resetGameState,      // Reset game state
   clearPlayer,         // Clear player data
 } = playerSlice.actions;

@@ -8,7 +8,7 @@ const Lobby = () => {
   const [playerName, setPlayerName] = useState('');
   const [isJoining, setIsJoining] = useState(false);
   const navigate = useNavigate();
-  const connected = useSelector(state => state.ui.connected);
+  const connected = useSelector(state => state.socket.connected);
 
   const handleJoinGame = (e) => {
     e.preventDefault();

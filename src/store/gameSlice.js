@@ -43,6 +43,7 @@ const gameSlice = createSlice({
     lastAction: null,         // Last game action performed
     gameEvents: [],           // Array of recent game events
     notifications: [],        // Array of game notifications
+    winner: null,             // Winner of the game (null when game not finished)
   },
 
   // Reducer functions that handle state updates
@@ -269,6 +270,16 @@ const gameSlice = createSlice({
     },
 
     /**
+     * Set the game winner
+     * Called when game ends and winner is determined
+     * @param {Object} state - Current Redux state
+     * @param {Object} action - Action object with winner data
+     */
+    setWinner: (state, action) => {
+      state.winner = action.payload;        // Set the winner
+    },
+
+    /**
      * Clear all game data
      * Called when leaving game or cleaning up
      * @param {Object} state - Current Redux state
@@ -300,6 +311,7 @@ export const {
   setLastAction,        // Set last action
   pauseGame,            // Pause game
   resumeGame,           // Resume game
+  setWinner,            // Set game winner
   resetGame,            // Reset game state
   clearGame,            // Clear all game data
 } = gameSlice.actions;

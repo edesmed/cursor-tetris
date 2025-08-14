@@ -285,7 +285,7 @@ export const restartGame = (roomName) => {
  * Send a game action (move, rotate, drop)
  * @param {Object} actionData - Game action data
  */
-export const sendGameAction = (actionData) => {
+export const sendGameMove = (actionData) => {
   sendGameAction('gameAction', actionData);
 };
 
@@ -308,5 +308,6 @@ export default {
   startGame,
   restartGame,
   sendGameAction,
+  sendGameMove,
   setPlayerReady,
 }; 

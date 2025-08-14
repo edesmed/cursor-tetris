@@ -7,6 +7,9 @@ import playerReducer from './playerSlice';    // Manages current player informat
 import gameReducer from './gameSlice';        // Manages game state and logic
 import uiReducer from './uiSlice';            // Manages UI state (loading, errors, etc.)
 
+// Import socket middleware
+import socketMiddleware from './socketMiddleware';
+
 /**
  * Redux store configuration
  * Combines all slice reducers into a single store
@@ -24,8 +27,9 @@ const store = configureStore({
   // Development tools configuration
   devTools: process.env.NODE_ENV !== 'production',  // Enable Redux DevTools in development
   
-  // Middleware configuration (uses Redux Toolkit defaults)
-  // Includes thunk middleware for async actions and serializable state checking
+  // Middleware configuration
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware().concat(socketMiddleware),
 });
 
 // Export the configured store for use in the application
