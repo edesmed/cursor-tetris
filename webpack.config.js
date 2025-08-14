@@ -45,6 +45,7 @@ module.exports = (env, argv) => {
       compress: true,
       port: 3000,
       hot: true,
+      historyApiFallback: true,
       proxy: {
         '/socket.io': {
           target: 'http://localhost:3001',
