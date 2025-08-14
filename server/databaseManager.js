@@ -1,20 +1,43 @@
-const { Pool } = require('pg');
+let Pool;
+try {
+  Pool = require('pg').Pool;
+} catch (error) {
+  console.warn('PostgreSQL module not available, using in-memory storage only');
+  Pool = null;
+}
 
 /**
  * DatabaseManager - Handles all PostgreSQL database operations for the Tetris game
  * Uses connection pooling for efficient database connections
+ * Falls back to in-memory storage if PostgreSQL is not available
  */
 class DatabaseManager {
   constructor() {
-    // Create a connection pool to efficiently manage database connections
-    // This allows multiple concurrent database operations without creating new connections each time
-    this.pool = new Pool({
-      user: process.env.DB_USER || 'postgres',        // Database username from environment or default
-      host: process.env.DB_HOST || 'localhost',       // Database host from environment or localhost
-      database: process.env.DB_NAME || 'red_tetris',  // Database name from environment or default
-      password: process.env.DB_PASSWORD || 'password', // Database password from environment or default
-      port: process.env.DB_PORT || 5432,              // Database port from environment or default PostgreSQL port
-    });
+    this.useInMemory = false;
+    this.inMemoryData = {
+      games: new Map(),
+      players: new Map(),
+      gameScores: []
+    };
+    
+    try {
+      if (!Pool) {
+        throw new Error('PostgreSQL module not available');
+      }
+      
+      // Create a connection pool to efficiently manage database connections
+      // This allows multiple concurrent database operations without creating new connections each time
+      this.pool = new Pool({
+        user: process.env.DB_USER || 'postgres',        // Database username from environment or default
+        host: process.env.DB_HOST || 'localhost',       // Database host from environment or localhost
+        database: process.env.DB_NAME || 'red_tetris',  // Database name from environment or default
+        password: process.env.DB_PASSWORD || 'password', // Database password from environment or default
+        port: process.env.DB_PORT || 5432,              // Database port from environment or default PostgreSQL port
+      });
+    } catch (error) {
+      console.warn('PostgreSQL connection failed, falling back to in-memory storage:', error.message);
+      this.useInMemory = true;
+    }
   }
 
   /**
@@ -23,10 +46,16 @@ class DatabaseManager {
    */
   async init() {
     try {
+      if (this.useInMemory) {
+        console.log('Using in-memory storage (PostgreSQL not available)');
+        return;
+      }
+      
       await this.createTables();
       console.log('Database initialized successfully');
     } catch (error) {
-      console.error('Database initialization failed:', error);
+      console.warn('Database initialization failed, falling back to in-memory storage:', error.message);
+      this.useInMemory = true;
     }
   }
 
@@ -98,6 +127,18 @@ class DatabaseManager {
    * @returns {Object} The created game record
    */
   async createGame(roomName) {
+    if (this.useInMemory) {
+      const game = {
+        id: Date.now(),
+        room_name: roomName,
+        status: 'waiting',
+        created_at: new Date(),
+        updated_at: new Date()
+      };
+      this.inMemoryData.games.set(roomName, game);
+      return game;
+    }
+    
     const client = await this.pool.connect();
     try {
       // Insert a new game record and return the created data
@@ -121,6 +162,21 @@ class DatabaseManager {
    * @returns {Object} The created player record
    */
   async addPlayer(socketId, playerName, roomName, isHost = false) {
+    if (this.useInMemory) {
+      const player = {
+        id: Date.now(),
+        socket_id: socketId,
+        player_name: playerName,
+        room_name: roomName,
+        is_host: isHost,
+        score: 0,
+        lines_cleared: 0,
+        created_at: new Date()
+      };
+      this.inMemoryData.players.set(socketId, player);
+      return player;
+    }
+    
     const client = await this.pool.connect();
     try {
       // Insert a new player record and return the created data
@@ -141,6 +197,15 @@ class DatabaseManager {
    * @returns {Object} The removed player record
    */
   async removePlayer(socketId) {
+    if (this.useInMemory) {
+      const player = this.inMemoryData.players.get(socketId);
+      if (player) {
+        this.inMemoryData.players.delete(socketId);
+        return player;
+      }
+      return null;
+    }
+    
     const client = await this.pool.connect();
     try {
       // Delete the player record and return the removed data
@@ -161,6 +226,13 @@ class DatabaseManager {
    * @returns {Array} Array of player records in the room
    */
   async getPlayersInRoom(roomName) {
+    if (this.useInMemory) {
+      const players = Array.from(this.inMemoryData.players.values())
+        .filter(player => player.room_name === roomName)
+        .sort((a, b) => a.created_at - b.created_at);
+      return players;
+    }
+    
     const client = await this.pool.connect();
     try {
       // Query all players in the specified room, ordered by when they joined
@@ -181,6 +253,10 @@ class DatabaseManager {
    * @returns {Object} Game record for the room
    */
   async getGame(roomName) {
+    if (this.useInMemory) {
+      return this.inMemoryData.games.get(roomName) || null;
+    }
+    
     const client = await this.pool.connect();
     try {
       // Query the game record for the specified room
@@ -287,7 +363,17 @@ class DatabaseManager {
    * Called when shutting down the server
    */
   async close() {
-    await this.pool.end();
+    if (this.useInMemory) {
+      // Clear in-memory data
+      this.inMemoryData.games.clear();
+      this.inMemoryData.players.clear();
+      this.inMemoryData.gameScores = [];
+      return;
+    }
+    
+    if (this.pool) {
+      await this.pool.end();
+    }
   }
 }
 
