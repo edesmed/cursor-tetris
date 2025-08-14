@@ -1,265 +1,270 @@
-const Game = require('./game');
-const Player = require('./player');
-const Piece = require('./piece');
+// Import required modules
+const Game = require('./game');  // Core game logic class
+const Player = require('./player');  // Player management class
 
+/**
+ * GameManager - Manages multiple game instances and handles player interactions
+ * Acts as a bridge between Socket.IO connections and individual game instances
+ */
 class GameManager {
   constructor(io, dbManager) {
-    this.io = io;
-    this.dbManager = dbManager;
-    this.games = new Map(); // roomName -> Game
-    this.players = new Map(); // socketId -> Player
-    this.socketToRoom = new Map(); // socketId -> roomName
+    this.io = io;                    // Socket.IO instance for real-time communication
+    this.dbManager = dbManager;       // Database manager for persistent storage
+    this.games = new Map();          // Map of active games: roomName -> Game instance
+    this.players = new Map();        // Map of connected players: socketId -> Player instance
   }
 
-  async joinGame(socket, roomName, playerName) {
+  /**
+   * Handle a new player joining a game room
+   * Creates player instance and adds them to the game
+   * @param {string} roomName - Name of the game room
+   * @param {Object} playerData - Player data from database
+   */
+  handlePlayerJoin(roomName, playerData) {
     try {
-      // Check if player name is already taken in this room
-      const existingPlayers = await this.dbManager.getPlayersInRoom(roomName);
-      const nameExists = existingPlayers.some(p => p.player_name === playerName);
-      
-      if (nameExists) {
-        socket.emit('error', { message: 'Player name already taken in this room' });
-        return;
-      }
+      // Create a new Player instance for this player
+      const player = new Player(
+        playerData.socket_id,
+        playerData.player_name,
+        roomName,
+        playerData.is_host
+      );
 
-      // Get or create game
+      // Store player reference for quick access
+      this.players.set(playerData.socket_id, player);
+
+      // Get or create the game instance for this room
       let game = this.games.get(roomName);
       if (!game) {
-        const dbGame = await this.dbManager.getGame(roomName);
-        if (!dbGame) {
-          await this.dbManager.createGame(roomName);
-        }
-        game = new Game(roomName, this.io);
+        // Create new game instance if this is the first player
+        game = new Game(roomName, this.io, this.dbManager);
         this.games.set(roomName, game);
       }
 
-      // Check if game is in progress
-      if (game.status === 'playing') {
-        socket.emit('error', { message: 'Game is already in progress' });
-        return;
-      }
-
-      // Create player
-      const isHost = game.players.length === 0;
-      const player = new Player(socket.id, playerName, roomName, isHost);
-      
-      // Add to database
-      await this.dbManager.addPlayer(socket.id, playerName, roomName, isHost);
-      
-      // Add to game
+      // Add player to the game
       game.addPlayer(player);
-      
-      // Store mappings
-      this.players.set(socket.id, player);
-      this.socketToRoom.set(socket.id, roomName);
-      
-      // Join socket room
-      socket.join(roomName);
-      
-      // Notify all players in room
+
+      // Update database to reflect new game status
+      this.dbManager.updateGameStatus(roomName, 'waiting');
+
+      // Notify all players in the room about the new player
       this.io.to(roomName).emit('playerJoined', {
-        player: player.toJSON(),
-        players: game.getPlayersInfo()
+        player: playerData,
+        players: game.getPlayers()
       });
-      
-      console.log(`Player ${playerName} joined room ${roomName}`);
-      
+
+      console.log(`Player ${playerData.player_name} joined game ${roomName}`);
     } catch (error) {
-      console.error('Error joining game:', error);
-      socket.emit('error', { message: 'Failed to join game' });
+      console.error('Error handling player join:', error);
     }
   }
 
-  async startGame(socket, roomName) {
+  /**
+   * Handle a player leaving a game room
+   * Removes player from game and cleans up if game is empty
+   * @param {string} roomName - Name of the game room
+   * @param {Object} playerData - Player data from database
+   */
+  handlePlayerLeave(roomName, playerData) {
     try {
+      // Remove player from our local tracking
+      this.players.delete(playerData.socket_id);
+
+      // Get the game instance for this room
       const game = this.games.get(roomName);
-      if (!game) {
-        socket.emit('error', { message: 'Game not found' });
-        return;
-      }
+      if (game) {
+        // Remove player from the game
+        game.removePlayer(playerData.socket_id);
 
-      const player = this.players.get(socket.id);
-      if (!player || !player.isHost) {
-        socket.emit('error', { message: 'Only the host can start the game' });
-        return;
-      }
-
-      if (game.players.length < 1) {
-        socket.emit('error', { message: 'Need at least 1 player to start' });
-        return;
-      }
-
-      // Update game status
-      await this.dbManager.updateGameStatus(roomName, 'playing');
-      game.start();
-      
-      // Notify all players
-      this.io.to(roomName).emit('gameStarted', {
-        players: game.getPlayersInfo(),
-        currentPieces: game.getCurrentPieces()
-      });
-      
-      console.log(`Game started in room ${roomName}`);
-      
-    } catch (error) {
-      console.error('Error starting game:', error);
-      socket.emit('error', { message: 'Failed to start game' });
-    }
-  }
-
-  movePiece(socket, data) {
-    const { direction } = data;
-    const roomName = this.socketToRoom.get(socket.id);
-    const game = this.games.get(roomName);
-    
-    if (!game || game.status !== 'playing') {
-      return;
-    }
-
-    const player = this.players.get(socket.id);
-    if (!player) {
-      return;
-    }
-
-    const result = game.movePiece(player, direction);
-    if (result.success) {
-      this.io.to(roomName).emit('pieceMoved', {
-        playerId: player.id,
-        direction,
-        board: result.board,
-        spectrum: result.spectrum
-      });
-    }
-  }
-
-  rotatePiece(socket, data) {
-    const roomName = this.socketToRoom.get(socket.id);
-    const game = this.games.get(roomName);
-    
-    if (!game || game.status !== 'playing') {
-      return;
-    }
-
-    const player = this.players.get(socket.id);
-    if (!player) {
-      return;
-    }
-
-    const result = game.rotatePiece(player);
-    if (result.success) {
-      this.io.to(roomName).emit('pieceRotated', {
-        playerId: player.id,
-        board: result.board,
-        spectrum: result.spectrum
-      });
-    }
-  }
-
-  hardDrop(socket, data) {
-    const roomName = this.socketToRoom.get(socket.id);
-    const game = this.games.get(roomName);
-    
-    if (!game || game.status !== 'playing') {
-      return;
-    }
-
-    const player = this.players.get(socket.id);
-    if (!player) {
-      return;
-    }
-
-    const result = game.hardDrop(player);
-    if (result.success) {
-      this.io.to(roomName).emit('pieceDropped', {
-        playerId: player.id,
-        board: result.board,
-        spectrum: result.spectrum,
-        linesCleared: result.linesCleared
-      });
-
-      // If lines were cleared, add penalty lines to other players
-      if (result.linesCleared > 0) {
-        const penaltyLines = result.linesCleared - 1;
-        game.addPenaltyLinesToOthers(player, penaltyLines);
-        
-        this.io.to(roomName).emit('penaltyLinesAdded', {
-          targetPlayerId: player.id,
-          penaltyLines,
-          affectedPlayers: game.getPlayersInfo()
-        });
-      }
-    }
-  }
-
-  async handleDisconnect(socket) {
-    try {
-      const roomName = this.socketToRoom.get(socket.id);
-      const player = this.players.get(socket.id);
-      
-      if (player && roomName) {
-        const game = this.games.get(roomName);
-        
-        // Remove from database
-        await this.dbManager.removePlayer(socket.id);
-        
-        // Remove from game
-        if (game) {
-          game.removePlayer(player);
-          
-          // Check if game should end
-          if (game.players.length === 0) {
-            this.games.delete(roomName);
-            await this.dbManager.updateGameStatus(roomName, 'finished');
-          } else if (game.status === 'playing') {
-            // Check if only one player remains
-            if (game.players.length === 1) {
-              const winner = game.players[0];
-              game.endGame(winner);
-              
-              this.io.to(roomName).emit('gameEnded', {
-                winner: winner.toJSON(),
-                players: game.getPlayersInfo()
-              });
-            } else {
-              // Assign new host if needed
-              if (player.isHost) {
-                const newHost = game.players[0];
-                newHost.isHost = true;
-                this.io.to(roomName).emit('newHost', {
-                  host: newHost.toJSON()
-                });
-              }
+        // Check if game is now empty
+        if (game.getPlayerCount() === 0) {
+          // Remove empty game and update database
+          this.games.delete(roomName);
+          this.dbManager.updateGameStatus(roomName, 'finished');
+          console.log(`Game ${roomName} ended - no players remaining`);
+        } else {
+          // Check if host left and assign new host if needed
+          if (playerData.is_host) {
+            const newHost = game.assignNewHost();
+            if (newHost) {
+              // Update database with new host
+              this.dbManager.updateGameStatus(roomName, 'waiting');
+              console.log(`New host assigned in game ${roomName}: ${newHost.name}`);
             }
           }
-          
-          // Notify remaining players
+
+          // Notify remaining players about the player who left
           this.io.to(roomName).emit('playerLeft', {
-            playerId: player.id,
-            players: game.getPlayersInfo()
+            player: playerData,
+            players: game.getPlayers()
           });
         }
-        
-        // Clean up mappings
-        this.players.delete(socket.id);
-        this.socketToRoom.delete(socket.id);
       }
-      
+
+      console.log(`Player ${playerData.player_name} left game ${roomName}`);
     } catch (error) {
-      console.error('Error handling disconnect:', error);
+      console.error('Error handling player leave:', error);
     }
   }
 
-  getActiveGames() {
-    return Array.from(this.games.values()).map(game => ({
-      roomName: game.roomName,
-      status: game.status,
-      playerCount: game.players.length
-    }));
+  /**
+   * Start a game in a specific room
+   * Only the host can start the game
+   * @param {string} roomName - Name of the game room to start
+   */
+  startGame(roomName) {
+    try {
+      const game = this.games.get(roomName);
+      if (game) {
+        // Check if enough players are ready to start
+        if (game.getPlayerCount() < 2) {
+          this.io.to(roomName).emit('error', { message: 'Need at least 2 players to start' });
+          return;
+        }
+
+        // Start the game
+        game.start();
+        
+        // Update database status
+        this.dbManager.updateGameStatus(roomName, 'playing');
+
+        // Notify all players that game has started
+        this.io.to(roomName).emit('gameStarted', {
+          players: game.getPlayers(),
+          gameState: game.getGameState()
+        });
+
+        console.log(`Game ${roomName} started`);
+      }
+    } catch (error) {
+      console.error('Error starting game:', error);
+    }
   }
 
+  /**
+   * Restart a game in a specific room
+   * Only the host can restart the game
+   * @param {string} roomName - Name of the game room to restart
+   */
+  restartGame(roomName) {
+    try {
+      const game = this.games.get(roomName);
+      if (game) {
+        // Reset the game state
+        game.restart();
+        
+        // Update database status
+        this.dbManager.updateGameStatus(roomName, 'waiting');
+
+        // Notify all players that game has been restarted
+        this.io.to(roomName).emit('gameRestarted', {
+          players: game.getPlayers(),
+          gameState: game.getGameState()
+        });
+
+        console.log(`Game ${roomName} restarted`);
+      }
+    } catch (error) {
+      console.error('Error restarting game:', error);
+    }
+  }
+
+  /**
+   * Handle game actions from players (move, rotate, drop pieces)
+   * Routes the action to the appropriate game instance
+   * @param {string} roomName - Name of the game room
+   * @param {string} socketId - Socket ID of the player
+   * @param {Object} actionData - Game action data (type, direction, etc.)
+   */
+  handleGameAction(roomName, socketId, actionData) {
+    try {
+      const game = this.games.get(roomName);
+      if (game && game.isPlaying()) {
+        // Process the game action
+        const result = game.handlePlayerAction(socketId, actionData);
+        
+        if (result.success) {
+          // Broadcast updated game state to all players in the room
+          this.io.to(roomName).emit('gameStateUpdate', {
+            gameState: game.getGameState(),
+            lastAction: result.action
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error handling game action:', error);
+    }
+  }
+
+  /**
+   * Handle player ready state
+   * Players can mark themselves as ready before the game starts
+   * @param {string} roomName - Name of the game room
+   * @param {string} socketId - Socket ID of the player
+   */
+  handlePlayerReady(roomName, socketId) {
+    try {
+      const game = this.games.get(roomName);
+      if (game) {
+        // Mark player as ready
+        game.setPlayerReady(socketId);
+        
+        // Check if all players are ready
+        if (game.areAllPlayersReady()) {
+          // Notify host that game can be started
+          this.io.to(roomName).emit('allPlayersReady');
+        }
+
+        // Notify all players about the ready state change
+        this.io.to(roomName).emit('playerReadyStateChanged', {
+          players: game.getPlayers()
+        });
+      }
+    } catch (error) {
+      console.error('Error handling player ready:', error);
+    }
+  }
+
+  /**
+   * Get all active games
+   * @returns {Array} Array of active game instances
+   */
+  getActiveGames() {
+    return Array.from(this.games.values());
+  }
+
+  /**
+   * Get a specific game by room name
+   * @param {string} roomName - Name of the game room
+   * @returns {Game|null} Game instance or null if not found
+   */
+  getGame(roomName) {
+    return this.games.get(roomName);
+  }
+
+  /**
+   * Get all players in a specific room
+   * @param {string} roomName - Name of the game room
+   * @returns {Array} Array of player instances in the room
+   */
   getPlayersInRoom(roomName) {
     const game = this.games.get(roomName);
-    return game ? game.getPlayersInfo() : [];
+    return game ? game.getPlayers() : [];
+  }
+
+  /**
+   * Clean up resources when shutting down
+   * Called during server shutdown
+   */
+  cleanup() {
+    // Stop all active games
+    for (const game of this.games.values()) {
+      game.stop();
+    }
+    
+    // Clear all references
+    this.games.clear();
+    this.players.clear();
   }
 }
 

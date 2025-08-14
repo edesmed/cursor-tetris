@@ -1,19 +1,32 @@
+// Import Redux Toolkit for simplified Redux setup
 import { configureStore } from '@reduxjs/toolkit';
-import { applyMiddleware } from 'redux';
-import thunk from 'redux-thunk';
-import socketMiddleware from '../middleware/socketMiddleware';
-import gameReducer from './gameSlice';
-import playerReducer from './playerSlice';
-import uiReducer from './uiSlice';
 
+// Import individual slice reducers
+import socketReducer from './socketSlice';    // Manages WebSocket connection state
+import playerReducer from './playerSlice';    // Manages current player information
+import gameReducer from './gameSlice';        // Manages game state and logic
+import uiReducer from './uiSlice';            // Manages UI state (loading, errors, etc.)
+
+/**
+ * Redux store configuration
+ * Combines all slice reducers into a single store
+ * Uses Redux Toolkit for simplified setup and better performance
+ */
 const store = configureStore({
+  // Combine all slice reducers into the root state
   reducer: {
-    game: gameReducer,
-    player: playerReducer,
-    ui: uiReducer
+    socket: socketReducer,    // socket.* - WebSocket connection management
+    player: playerReducer,    // player.* - Current player data
+    game: gameReducer,        // game.* - Game state and mechanics
+    ui: uiReducer,            // ui.* - User interface state
   },
-  middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware().concat(thunk, socketMiddleware)
+  
+  // Development tools configuration
+  devTools: process.env.NODE_ENV !== 'production',  // Enable Redux DevTools in development
+  
+  // Middleware configuration (uses Redux Toolkit defaults)
+  // Includes thunk middleware for async actions and serializable state checking
 });
 
+// Export the configured store for use in the application
 export default store; 

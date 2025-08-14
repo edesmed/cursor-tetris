@@ -21,7 +21,14 @@
     "pg": "^8.11.3",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "redux": "^4.2.1",
+    "react-redux": "^8.1.3",
+    "redux-thunk": "^2.4.2",
+    "react-router-dom": "^6.8.1",
+    "socket.io-client": "^4.7.2"
   },
   "devDependencies": {
     "@babel/core": "^7.23.0",
@@ -44,21 +51,6 @@
     "webpack-cli": "^5.1.4",
     "webpack-dev-server": "^4.15.1"
   },
-  "dependencies": {
-    "express": "^4.18.2",
-    "socket.io": "^4.7.2",
-    "pg": "^8.11.3",
-    "cors": "^2.8.5",
-    "dotenv": "^16.3.1",
-    "uuid": "^9.0.1",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "redux": "^4.2.1",
-    "react-redux": "^8.1.3",
-    "redux-thunk": "^2.4.2",
-    "react-router-dom": "^6.8.1",
-    "socket.io-client": "^4.7.2"
-  },
   "jest": {
     "testEnvironment": "jsdom",
     "setupFilesAfterEnv": ["<rootDir>/src/setupTests.js"],
@@ -80,4 +72,4 @@
       }
     }
   }
-} 
+}
